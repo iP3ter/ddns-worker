@@ -37,11 +37,11 @@ export default {
 
         const recordType = (type.toUpperCase() === 'AAAA') ? 'AAAA' : 'A';
         const recordTTL = ttl || parseInt(env.DEFAULT_TTL) || 1;
-        const fullRecordName = `${prefix}.${zone_name}`;
+        
+        const fullRecordName = (prefix === '@') ? zone_name : `${prefix}.${zone_name}`;
 
-        // === 修改重点：使用 API Token 的 Headers ===
         const cfHeaders = {
-            'Authorization': `Bearer ${env.CF_DNS_API_TOKEN}`, // 使用新的 Token 变量
+            'Authorization': `Bearer ${env.CF_DNS_API_TOKEN}`,
             'Content-Type': 'application/json'
         };
 
@@ -97,7 +97,9 @@ export default {
         const action = existingRecordId ? 'updated' : 'created';
         let tgStatus = 'disabled';
         if (isTelegramEnabled(env)) {
-            const tgSuccess = await sendTelegramNotification(env, action, prefix, ip, node_name || DEFAULT_NODE_NAME);
+            // ✅ 通知中显示完整域名
+            const displayName = (prefix === '@') ? zone_name : `${prefix}.${zone_name}`;
+            const tgSuccess = await sendTelegramNotification(env, action, displayName, ip, node_name || DEFAULT_NODE_NAME);
             tgStatus = tgSuccess ? 'sent' : 'failed';
         }
 
@@ -117,11 +119,12 @@ async function sendTelegramNotification(env, action, recordName, ip, nodeName) {
     try {
         const actionText = action === 'updated' ? '更新' : '创建';
         const displayIP = maskIPAddress(ip);
-        const message = `🚀 DDNS
-- 节点名称: ${nodeName}
-- 记录变更: ${actionText}
-- 记录名称: ${recordName}
-- 新 IP: ${displayIP}`;
+        const message = `🚀 *DDNS 记录${actionText}*
+
+📍 *节点*: \`${nodeName}\`
+🌐 *域名*: \`${recordName}\`
+🔗 *IP*: \`${displayIP}\`
+⏰ *时间*: \`${new Date().toISOString()}\``;
 
         const resp = await fetch(`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendMessage`, {
             method: 'POST',
