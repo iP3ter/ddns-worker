@@ -26,9 +26,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # 以前的 EMAIL 和 KEY 删掉，换成这个：
           SECRET_CF_DNS_API_TOKEN: ${{ secrets.CF_DNS_API_TOKEN }}
-          # 其他保持不变
           SECRET_API_SECRET: ${{ secrets.API_SECRET }}
           SECRET_DEFAULT_TTL: ${{ secrets.DEFAULT_TTL }}
           SECRET_TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
