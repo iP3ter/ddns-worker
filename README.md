@@ -49,9 +49,9 @@
 wget --no-check-certificate -O ddns-install.sh https://raw.githubusercontent.com/iP3ter/ddns-worker/main/ddns-install.sh && chmod +x ddns-install.sh
 ./ddns-install.sh
 ```
-1 选择`1`进行安装。
-2 脚本会引导你输入`Worker`地址、密钥、域名 等信息。
-3 安装完成后，脚本会自动配置`Crontab`定时任务。
+1. 选择`1`进行安装。
+2. 脚本会引导你输入`Worker`地址、密钥、域名 等信息。
+3. 安装完成后，脚本会自动配置`Crontab`定时任务。
 
 ### Windows
 
