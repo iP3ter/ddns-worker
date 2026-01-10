@@ -1,0 +1,43 @@
+name: Deploy DDNS Worker
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to Cloudflare Workers
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          secrets: |
+            CF_API_KEY
+            CF_API_EMAIL
+            API_SECRET
+            DEFAULT_TTL
+            TG_BOT_TOKEN
+            TG_CHANNEL_ID
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          CF_API_EMAIL: ${{ secrets.CF_API_EMAIL }}
+          API_SECRET: ${{ secrets.API_SECRET }}
+          DEFAULT_TTL: ${{ secrets.DEFAULT_TTL || '1' }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN || '' }}
+          TG_CHANNEL_ID: ${{ secrets.TG_CHANNEL_ID || '' }}
