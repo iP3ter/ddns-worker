@@ -53,8 +53,34 @@ Actions → Deploy DDNS Worker → Run workflow → Run workflow
 ```
 GitHub Actions 将自动运行部署。
 > **注意**: 为了防止泄露，部署日志中的 Worker URL 已被隐藏。请前往 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> **Workers & Pages** 查看你的 Worker 访问链接。
-> 为了方便你可以在cloudflare worker绑定一个自己的域名
----
+为了方便你可以在cloudflare worker绑定一个自己的域名
+问：我把 https://cf-ddns-worker.example.workers.dev 绑定到了 yourname.example.com 为啥就不行了
+答：当使用自定义域名时，请求会经过该域名的防火墙规则。
+
+方法一：关闭 Bot Fight Mode
+```
+Cloudflare Dashboard
+  → 选择域名
+  → Security
+  → Bots
+  → Bot Fight Mode → 关闭
+```
+方法二：添加 WAF 白名单规则
+```
+Cloudflare Dashboard
+  → 选择域名
+  → Security
+  → WAF
+  → Custom rules
+  → Create rule
+```
+规则配置：
+
+- Rule name: Allow DDNS
+- Expression: (http.host eq "ddns.your-domain.com")
+- Action: Skip
+- 勾选: All remaining custom rules、Super Bot Fight Mode
+
 
 ### 🖥️ 节点端 (客户端)
 在你的服务器上运行以下命令：（兼容 Alpine / Debian / Ubuntu / CentOS）
