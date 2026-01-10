@@ -6,7 +6,7 @@
 
 ## Install
 
-基于原版，改为使用 `GitHub Actions` 自动部署到 `Cloudflare Worker`，同时提供了客户端一键安装脚本。
+基于原版，改为使用 `GitHub Actions` 自动部署到 `Cloudflare Worker`，同时提供了客户端一键安装脚本，并且加入了依赖校验这一功能。
 
 ## 🐧 Linux
 
@@ -48,9 +48,12 @@
 | `DEFAULT_TTL` | DNS 记录的 TTL 值 (默认为 1，即自动) |
 
 #### 4. 部署
-提交代码到 `main` 分支，GitHub Actions 将自动运行部署。
+```
+Actions → Deploy DDNS Worker → Run workflow → Run workflow
+```
+GitHub Actions 将自动运行部署。
 > **注意**: 为了防止泄露，部署日志中的 Worker URL 已被隐藏。请前往 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> **Workers & Pages** 查看你的 Worker 访问链接。
-> 为了方便你可以绑定一个自己的域名
+> 为了方便你可以在cloudflare worker绑定一个自己的域名
 ---
 
 ### 🖥️ 节点端 (客户端)
