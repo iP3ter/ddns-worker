@@ -85,32 +85,10 @@ wget --no-check-certificate -O ddns-install.sh https://raw.githubusercontent.com
 目前仅支持 Cloudflare
 
 #### 一些问题
-- 问：我把 https://cf-ddns-worker.example.workers.dev 绑定到了 yourname.example.com 为啥就不行了
-- 答：当使用自定义域名时，请求会经过该域名的防火墙规则。
-> 方法一：关闭 Bot Fight Mode
-```
-Cloudflare Dashboard
-  → 选择域名
-  → Security
-  → Bots
-  → Bot Fight Mode → 关闭
-```
-> 方法二：添加 WAF 白名单规则
-```
-Cloudflare Dashboard
-  → 选择域名
-  → Security
-  → WAF
-  → Custom rules
-  → Create rule
-```
-规则配置：
-```
-- Rule name: Allow DDNS
-- Expression: (http.host eq "ddns.your-domain.com")
-- Action: Skip
-- 勾选: All remaining custom rules、Super Bot Fight Mode
-```
+- 问：我把 yourname.example.com 绑定到了 cf-ddns-worker.example.workers.dev 上就不行了
+- 答：在不能使用自定义域名的服务器上使用 cf-ddns-worker.example.workers.dev 域名
+  - 能执行的服务器：可能 IP 比较“干净”，或者所在的机房信誉较好（比如家宽 IP、冷门 IP）。
+  - 被拦截的服务器：通常是 数据中心 IP (Datacenter IP)，比如某些云厂商（AWS, Azure, DigitalOcean, 搬瓦工等）的 IP 段。Cloudflare 默认认为这些 IP 发出的自动化请求（curl）是恶意的扫描机器人，所以直接拦截。
 
 - 问：那为什么我手动删除dns，然后执行了这个脚本，没有给我创建新的dns
 - 答: 脚本为了不浪费你的 Worker 请求次数（也不浪费服务器资源），它有一个逻辑：
