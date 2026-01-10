@@ -57,7 +57,7 @@ GitHub Actions 将自动运行部署。
 ---
 
 ### 🖥️ 节点端 (客户端)
-在你的服务器上运行以下命令：
+在你的服务器上运行以下命令：（兼容 Alpine / Debian / Ubuntu / CentOS）
 ```bash
 wget --no-check-certificate -O ddns-install.sh https://raw.githubusercontent.com/iP3ter/ddns-worker/main/ddns-install.sh && chmod +x ddns-install.sh
 ./ddns-install.sh
