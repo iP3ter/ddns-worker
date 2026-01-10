@@ -68,6 +68,14 @@ check_dependencies() {
         print_msg "$GREEN" "[✓] crontab 已安装"
     fi
     
+    # 检查 nano
+    if ! command -v nano >/dev/null 2>&1; then
+        print_msg "$YELLOW" "[!] nano 未安装"
+        need_install=1
+    else
+        print_msg "$GREEN" "[✓] nano 已安装"
+    fi
+    
     # 安装缺失的依赖
     if [ $need_install -eq 1 ]; then
         print_msg "$YELLOW" "正在安装缺失的依赖..."
@@ -75,29 +83,27 @@ check_dependencies() {
         case "$OS" in
             alpine)
                 apk update
-                apk add --no-cache curl dcron
-                # 启动 crond
+                apk add --no-cache curl dcron nano
                 if command -v rc-service >/dev/null 2>&1; then
                     rc-update add dcron default 2>/dev/null || true
                     rc-service dcron start 2>/dev/null || true
                 else
-                    # 直接启动 crond 进程
                     crond 2>/dev/null || true
                 fi
                 ;;
             debian)
                 apt-get update
-                apt-get install -y curl cron
+                apt-get install -y curl cron nano
                 systemctl enable cron 2>/dev/null || true
                 systemctl start cron 2>/dev/null || service cron start 2>/dev/null || true
                 ;;
             rhel)
-                yum install -y curl cronie
+                yum install -y curl cronie nano
                 systemctl enable crond 2>/dev/null || true
                 systemctl start crond 2>/dev/null || service crond start 2>/dev/null || true
                 ;;
             *)
-                print_msg "$RED" "无法识别的系统，请手动安装 curl 和 cron"
+                print_msg "$RED" "无法识别的系统，请手动安装 curl、cron 和 nano"
                 exit 1
                 ;;
         esac
@@ -114,6 +120,10 @@ check_dependencies() {
     if ! command -v crontab >/dev/null 2>&1; then
         print_msg "$RED" "[✗] crontab 安装失败"
         exit 1
+    fi
+    
+    if ! command -v nano >/dev/null 2>&1; then
+        print_msg "$YELLOW" "[!] nano 安装失败，将使用 vi 作为备用"
     fi
     
     # 确保 cron 服务运行
@@ -149,19 +159,12 @@ check_cron_running() {
     fi
 }
 
-# 读取用户输入（兼容 Alpine）
-read_input() {
-    printf "%s" "$1"
-    read input_value
-    echo "$input_value"
-}
-
 # 获取用户输入
 get_input() {
     printf "\n"
     print_msg "$GREEN" "请配置 DDNS 参数："
     
-    printf "请输入 Worker 主控地址 (例如 https://cf-ddns-worker.example.workers.dev): "
+    printf "请输入 Worker 主控地址 (例如 https://ddns.example.com): "
     read input_url
     if [ -z "$input_url" ]; then
         print_msg "$RED" "地址不能为空"
@@ -371,7 +374,12 @@ menu() {
         4) view_log ;;
         5) 
             if [ -f "$CONFIG_FILE" ]; then
-                ${EDITOR:-vi} "$CONFIG_FILE"
+                # 优先使用 nano，如果没有则用 vi
+                if command -v nano >/dev/null 2>&1; then
+                    nano "$CONFIG_FILE"
+                else
+                    vi "$CONFIG_FILE"
+                fi
                 print_msg "$GREEN" "修改完成，下次定时任务将生效。"
             else
                 print_msg "$RED" "尚未安装！"
