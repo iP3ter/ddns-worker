@@ -1,16 +1,5 @@
-//环境变量(尽量都设置为secret模式)
-//CF_API_KEY: CF的API key
-//CF_API_EMAIL: CF注册邮箱
-//DEFAULT_TTL: 默认TTL值 (可选，默认为1)(1在CF代表auto)
-//API_SECRET: 用于客户端认证的密钥
-
-//[CF_ZONE_ID]: Cloudflare 区域ID (可无视此项,会自动进行获取)
-
-//TG通知部分(如果不想用/不知道这是什么可以无视)
-//TG_BOT_TOKEN: BOT的token
-//TG_CHANNEL_ID: 频道的ID,发送消息用
-
 const HIDE_IP_SEGMENTS = true; // 设置为true时，隐藏IP的C段和D段（最后两段）
+const DEFAULT_NODE_NAME = "未知节点"; // 默认节点名称
 
 function maskIPAddress(ip) {
     if (!HIDE_IP_SEGMENTS) {
@@ -35,16 +24,21 @@ function maskIPAddress(ip) {
     return ip;
 }
 
+// 检查 Telegram 是否已配置
+function isTelegramEnabled(env) {
+    return !!(env.TG_BOT_TOKEN && env.TG_CHANNEL_ID);
+}
+
 export default {
     async fetch(request, env){
         if(request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
         const auth = request.headers.get('Authorization');
-        if(!auth || auth !== `Bearer ${env.API_SECRET}`) return new Response('Unauthorized', { status: 501 });
+        if(!auth || auth !== `Bearer ${env.API_SECRET}`) return new Response('Unauthorized', { status: 401 });
   
         const { prefix, ip, type = 'A', ttl, zone_name, node_name } = await request.json();
         
-        if(!prefix || !ip) return new Response('Bad Gateway: prefix and ip are required', { status: 502 });
+        if(!prefix || !ip) return new Response('Bad Gateway: prefix and ip are required', { status: 400 });
         const recordType = (type.toUpperCase() === 'AAAA') ? 'AAAA' : 'A';
         
         const recordTTL = ttl || parseInt(env.DEFAULT_TTL) || 1;
@@ -115,18 +109,24 @@ export default {
                 success: false,
                 errors: cfData.errors
             }), {
-                status: 504,
+                status: 500,
                 headers: { 'Content-Type': 'application/json' }
             });
         
         const action = recordId ? 'updated' : 'created';
         const nodeName = node_name || DEFAULT_NODE_NAME;
-        await sendTelegramNotification(env, action, prefix, ip, nodeName);
+        
+        // 只有配置了 Telegram 才发送通知
+        let telegramSent = false;
+        if (isTelegramEnabled(env)) {
+            telegramSent = await sendTelegramNotification(env, action, prefix, ip, nodeName);
+        }
 
         return new Response(JSON.stringify({
             success: true,
             action: recordId ? 'updated' : 'created',
-            record: cfData.result
+            record: cfData.result,
+            telegram_notification: isTelegramEnabled(env) ? (telegramSent ? 'sent' : 'failed') : 'disabled'
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -135,33 +135,40 @@ export default {
 }
 
 async function sendTelegramNotification(env, action, recordName, ip, nodeName) {
-    if(action == 'updated') action = '更新';
-    else action = '创建';
-    
-    // 根据配置决定是否隐藏IP的最后两段
-    const displayIP = maskIPAddress(ip);
-    
-    const message = `🚀 CCB-DDNS
+    try {
+        if(action == 'updated') action = '更新';
+        else action = '创建';
+        
+        // 根据配置决定是否隐藏IP的最后两段
+        const displayIP = maskIPAddress(ip);
+        
+        const message = `🚀 CCB-DDNS
 - 节点名称: ${nodeName}
 - 记录变更: ${action.toUpperCase()}
 - 记录名称: ${recordName}
 - 新 IP: ${displayIP}`;
 
-    const telegramUrl = `https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendMessage`;
-    const response = await fetch(telegramUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            chat_id: env.TG_CHANNEL_ID, 
-            text: message,
-            parse_mode: 'Markdown'
-        })
-    });
+        const telegramUrl = `https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendMessage`;
+        const response = await fetch(telegramUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                chat_id: env.TG_CHANNEL_ID, 
+                text: message,
+                parse_mode: 'Markdown'
+            })
+        });
 
-    const data = await response.json();
-    if (!data.ok) {
-        console.error('TG Error:', data);
+        const data = await response.json();
+        if (!data.ok) {
+            console.error('TG Error:', data);
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('TG Exception:', error);
+        return false;
     }
 }
