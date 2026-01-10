@@ -21,17 +21,142 @@ SCRIPT_NAME="cf-ddns"
 
 # 检查系统依赖
 check_dependencies() {
+    local need_curl=0
+    local need_cron=0
+    
+    echo -e "${GREEN}正在检查系统依赖...${PLAIN}"
+    
+    # 检查 curl
     if ! command -v curl &> /dev/null; then
-        echo -e "${YELLOW}正在安装 curl...${PLAIN}"
+        echo -e "${YELLOW}[!] curl 未安装${PLAIN}"
+        need_curl=1
+    else
+        echo -e "${GREEN}[✓] curl 已安装${PLAIN}"
+    fi
+    
+    # 检查 crontab
+    if ! command -v crontab &> /dev/null; then
+        echo -e "${YELLOW}[!] crontab 未安装${PLAIN}"
+        need_cron=1
+    else
+        echo -e "${GREEN}[✓] crontab 已安装${PLAIN}"
+    fi
+    
+    # 如果有需要安装的包
+    if [ $need_curl -eq 1 ] || [ $need_cron -eq 1 ]; then
+        echo -e "${YELLOW}正在安装缺失的依赖...${PLAIN}"
+        
         if [ -x "$(command -v apt-get)" ]; then
-            apt-get update && apt-get install -y curl cron
+            # Debian/Ubuntu
+            apt-get update
+            apt-get install -y curl cron
+            systemctl enable cron 2>/dev/null || true
+            systemctl start cron 2>/dev/null || service cron start 2>/dev/null || true
+            
         elif [ -x "$(command -v yum)" ]; then
+            # CentOS/RHEL
             yum install -y curl cronie
+            systemctl enable crond 2>/dev/null || true
+            systemctl start crond 2>/dev/null || service crond start 2>/dev/null || true
+            
+        elif [ -x "$(command -v dnf)" ]; then
+            # Fedora/RHEL 8+
+            dnf install -y curl cronie
+            systemctl enable crond 2>/dev/null || true
+            systemctl start crond 2>/dev/null || true
+            
         elif [ -x "$(command -v apk)" ]; then
-            apk add curl
+            # Alpine Linux
+            apk add --no-cache curl dcron libcap
+            chown root:root /usr/sbin/crond 2>/dev/null || true
+            setcap cap_setgid=ep /usr/sbin/crond 2>/dev/null || true
+            rc-update add dcron default 2>/dev/null || true
+            rc-service dcron start 2>/dev/null || crond 2>/dev/null || true
+            
+        elif [ -x "$(command -v pacman)" ]; then
+            # Arch Linux
+            pacman -Sy --noconfirm curl cronie
+            systemctl enable cronie 2>/dev/null || true
+            systemctl start cronie 2>/dev/null || true
+            
+        elif [ -x "$(command -v zypper)" ]; then
+            # openSUSE
+            zypper install -y curl cron
+            systemctl enable cron 2>/dev/null || true
+            systemctl start cron 2>/dev/null || true
+            
         else
-            echo -e "${RED}无法自动安装 curl，请手动安装！${PLAIN}"
+            echo -e "${RED}无法识别的包管理器，请手动安装 curl 和 cron！${PLAIN}"
+            echo -e "${YELLOW}常见安装命令:${PLAIN}"
+            echo -e "  Debian/Ubuntu: apt-get install curl cron"
+            echo -e "  CentOS/RHEL:   yum install curl cronie"
+            echo -e "  Alpine:        apk add curl dcron"
+            echo -e "  Arch:          pacman -S curl cronie"
             exit 1
+        fi
+    fi
+    
+    # 最终验证
+    echo -e "\n${GREEN}验证依赖安装...${PLAIN}"
+    
+    if ! command -v curl &> /dev/null; then
+        echo -e "${RED}[✗] curl 安装失败，请手动安装！${PLAIN}"
+        exit 1
+    else
+        echo -e "${GREEN}[✓] curl 验证通过${PLAIN}"
+    fi
+    
+    if ! command -v crontab &> /dev/null; then
+        echo -e "${RED}[✗] crontab 安装失败，请手动安装！${PLAIN}"
+        exit 1
+    else
+        echo -e "${GREEN}[✓] crontab 验证通过${PLAIN}"
+    fi
+    
+    # 检查 cron 服务状态
+    check_cron_service
+    
+    echo -e "${GREEN}所有依赖检查通过！${PLAIN}\n"
+}
+
+# 检查 cron 服务是否运行
+check_cron_service() {
+    local cron_running=0
+    
+    if command -v systemctl &> /dev/null; then
+        if systemctl is-active --quiet cron 2>/dev/null; then
+            cron_running=1
+        elif systemctl is-active --quiet crond 2>/dev/null; then
+            cron_running=1
+        elif systemctl is-active --quiet cronie 2>/dev/null; then
+            cron_running=1
+        fi
+    elif command -v service &> /dev/null; then
+        if service cron status 2>/dev/null | grep -q "running"; then
+            cron_running=1
+        elif service crond status 2>/dev/null | grep -q "running"; then
+            cron_running=1
+        fi
+    elif pgrep -x "cron" > /dev/null 2>&1 || pgrep -x "crond" > /dev/null 2>&1; then
+        cron_running=1
+    fi
+    
+    if [ $cron_running -eq 1 ]; then
+        echo -e "${GREEN}[✓] cron 服务运行中${PLAIN}"
+    else
+        echo -e "${YELLOW}[!] cron 服务可能未运行，正在尝试启动...${PLAIN}"
+        systemctl start cron 2>/dev/null || \
+        systemctl start crond 2>/dev/null || \
+        systemctl start cronie 2>/dev/null || \
+        service cron start 2>/dev/null || \
+        service crond start 2>/dev/null || \
+        crond 2>/dev/null || true
+        
+        sleep 1
+        if pgrep -x "cron" > /dev/null 2>&1 || pgrep -x "crond" > /dev/null 2>&1; then
+            echo -e "${GREEN}[✓] cron 服务已启动${PLAIN}"
+        else
+            echo -e "${YELLOW}[!] 请手动确认 cron 服务状态${PLAIN}"
         fi
     fi
 }
@@ -111,7 +236,6 @@ LAST_IP_FILE="/tmp/cf-ddns-lastip-${SUBDOMAIN_PREFIX}.txt"
 if [ -f "$LAST_IP_FILE" ]; then
     LAST_IP=$(cat "$LAST_IP_FILE")
     if [ "$WAN_IP" = "$LAST_IP" ]; then
-        # IP未变动，不记录日志以免刷屏，除非调试
         exit 0
     fi
 fi
@@ -129,7 +253,6 @@ if echo "$RESPONSE" | grep -q '"success":true'; then
     echo "$WAN_IP" > "$LAST_IP_FILE"
 else
     log "Update failed! Response: $RESPONSE"
-    # 这里不退出，防止cron报错
 fi
 EOF
     chmod +x "$INSTALL_PATH"
@@ -174,13 +297,12 @@ uninstall_ddns() {
     read -p "确定要卸载吗? [y/N] " confirm
     [[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "已取消" && return
     
-    # 删除定时任务
     crontab -l 2>/dev/null | grep -v "$INSTALL_PATH" | crontab -
     
     rm -f "$INSTALL_PATH"
     rm -rf "/etc/cf-ddns"
     rm -f "$LOG_FILE"
-    rm -f "/tmp/cf-ddns-lastip-*"
+    rm -f /tmp/cf-ddns-lastip-*
     
     echo -e "${GREEN}卸载完成！${PLAIN}"
 }
