@@ -53,34 +53,7 @@ Actions → Deploy DDNS Worker → Run workflow → Run workflow
 ```
 GitHub Actions 将自动运行部署。
 > **注意**: 为了防止泄露，部署日志中的 Worker URL 已被隐藏。请前往 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> **Workers & Pages** 查看你的 Worker 访问链接。
-为了方便你可以在cloudflare worker绑定一个自己的域名
-问：我把 https://cf-ddns-worker.example.workers.dev 绑定到了 yourname.example.com 为啥就不行了
-答：当使用自定义域名时，请求会经过该域名的防火墙规则。
-
-方法一：关闭 Bot Fight Mode
-```
-Cloudflare Dashboard
-  → 选择域名
-  → Security
-  → Bots
-  → Bot Fight Mode → 关闭
-```
-方法二：添加 WAF 白名单规则
-```
-Cloudflare Dashboard
-  → 选择域名
-  → Security
-  → WAF
-  → Custom rules
-  → Create rule
-```
-规则配置：
-
-- Rule name: Allow DDNS
-- Expression: (http.host eq "ddns.your-domain.com")
-- Action: Skip
-- 勾选: All remaining custom rules、Super Bot Fight Mode
-
+>为了方便你可以在cloudflare worker绑定一个自己的域名
 
 ### 🖥️ 节点端 (客户端)
 在你的服务器上运行以下命令：（兼容 Alpine / Debian / Ubuntu / CentOS）
@@ -110,3 +83,47 @@ wget --no-check-certificate -O ddns-install.sh https://raw.githubusercontent.com
  
 ## Support
 目前仅支持 Cloudflare
+
+#### 一些问题
+- 问：我把 https://cf-ddns-worker.example.workers.dev 绑定到了 yourname.example.com 为啥就不行了
+- 答：当使用自定义域名时，请求会经过该域名的防火墙规则。
+> 方法一：关闭 Bot Fight Mode
+```
+Cloudflare Dashboard
+  → 选择域名
+  → Security
+  → Bots
+  → Bot Fight Mode → 关闭
+```
+> 方法二：添加 WAF 白名单规则
+```
+Cloudflare Dashboard
+  → 选择域名
+  → Security
+  → WAF
+  → Custom rules
+  → Create rule
+```
+规则配置：
+```
+- Rule name: Allow DDNS
+- Expression: (http.host eq "ddns.your-domain.com")
+- Action: Skip
+- 勾选: All remaining custom rules、Super Bot Fight Mode
+```
+
+- 问：那为什么我手动删除dns，然后执行了这个脚本，没有给我创建新的dns
+- 答: 脚本为了不浪费你的 Worker 请求次数（也不浪费服务器资源），它有一个逻辑：
+1. 脚本会在本地存一个小纸条（缓存文件），上面写着：“上次我已经把 IP 1.2.3.4 更新到 Cloudflare 了”。
+2. 当你再次运行脚本时，它会看一眼现在的 IP，发现还是 1.2.3.4。
+3. 它会看一眼小纸条，发现上次也更新了 1.2.3.4。
+4. 脚本心里想：“IP 没变嘛，那我就不用去骚扰 Cloudflare 了”，然后直接结束运行。
+- 问题在于：
+  - 你手动在 Cloudflare 删除了记录，但脚本手里的“小纸条”还在。脚本不知道你删了，它只知道 IP 没变，所以它认为任务已经完成了。
+- 解决方法:
+  - 你只需要撕掉这张“小纸条”（删除缓存文件），强迫脚本认为这是它第一次运行。
+执行这行命令即可：
+```
+rm -f /tmp/cf-ddns-lastip-* && /usr/local/bin/cf-ddns
+```
+执行完后，你会发现 Cloudflare 上的记录又回来了。
