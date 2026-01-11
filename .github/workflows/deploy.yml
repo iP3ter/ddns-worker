@@ -27,7 +27,7 @@ jobs:
           SECRET_API_SECRET: ${{ secrets.API_SECRET }}
           SECRET_DEFAULT_TTL: ${{ secrets.DEFAULT_TTL }}
           SECRET_TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          SECRET_TG_CHANNEL_ID: ${{ secrets.TG_CHANNEL_ID }}
+          SECRET_TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         shell: bash
         run: |
           echo "Uploading secrets..."
@@ -39,7 +39,7 @@ jobs:
           [ -n "$SECRET_API_SECRET" ] && echo "$SECRET_API_SECRET" | npx wrangler secret put API_SECRET >/dev/null 2>&1
           [ -n "$SECRET_DEFAULT_TTL" ] && echo "$SECRET_DEFAULT_TTL" | npx wrangler secret put DEFAULT_TTL >/dev/null 2>&1
           [ -n "$SECRET_TG_BOT_TOKEN" ] && echo "$SECRET_TG_BOT_TOKEN" | npx wrangler secret put TG_BOT_TOKEN >/dev/null 2>&1
-          [ -n "$SECRET_TG_CHANNEL_ID" ] && echo "$SECRET_TG_CHANNEL_ID" | npx wrangler secret put TG_CHANNEL_ID >/dev/null 2>&1
+          [ -n "$SECRET_TG_CHAT_ID" ] && echo "$SECRET_TG_CHAT_ID" | npx wrangler secret put TG_CHAT_ID >/dev/null 2>&1
 
           echo "Secrets uploaded. Starting deployment..."
           npx wrangler deploy 2>&1 | sed -E 's/https:\/\/[a-zA-Z0-9.-]+\.workers\.dev/**HIDDEN_URL**/g'
