@@ -1,17 +1,44 @@
-const HIDE_IP_SEGMENTS = true; 
+// ============ 隐私设置 ============
+const HIDE_IP_SEGMENTS = true;   // true=隐藏IP, false=显示完整IP
+const HIDE_DOMAIN = true;        // true=隐藏域名, false=显示完整域名
 const DEFAULT_NODE_NAME = "未知节点";
 
+// 隐藏 IP 地址
 function maskIPAddress(ip) {
     if (!HIDE_IP_SEGMENTS) return ip;
     if (ip.includes('.')) {
         const parts = ip.split('.');
-        if (parts.length === 4) return `${parts[0]}.${parts[1]}.x.x`;
+        if (parts.length === 4) return `${parts[0]}.${parts[1]}.*.*`;
     }
     if (ip.includes(':')) {
         const parts = ip.split(':');
-        if (parts.length >= 4) return `${parts.slice(0, parts.length - 4).join(':')}:xxxx:xxxx:xxxx:xxxx`;
+        if (parts.length >= 4) return `${parts.slice(0, 2).join(':')}:****:****:****:****`;
     }
     return ip;
+}
+
+// 隐藏域名
+function maskDomain(domain) {
+    if (!HIDE_DOMAIN) return domain;
+    
+    const parts = domain.split('.');
+    
+    // 处理每个部分
+    const maskedParts = parts.map((part, index) => {
+        // 保留顶级域名（如 com, xyz, net）
+        if (index === parts.length - 1) return part;
+        
+        // 如果长度小于等于2，全部保留
+        if (part.length <= 2) return part;
+        
+        // 保留首尾字符，中间用 * 替代
+        const first = part[0];
+        const last = part[part.length - 1];
+        const middle = '*'.repeat(Math.min(part.length - 2, 4));
+        return `${first}${middle}${last}`;
+    });
+    
+    return maskedParts.join('.');
 }
 
 function isTelegramEnabled(env) {
@@ -38,6 +65,7 @@ export default {
         const recordType = (type.toUpperCase() === 'AAAA') ? 'AAAA' : 'A';
         const recordTTL = ttl || parseInt(env.DEFAULT_TTL) || 1;
         
+        // 支持根域名 (@)
         const fullRecordName = (prefix === '@') ? zone_name : `${prefix}.${zone_name}`;
 
         const cfHeaders = {
@@ -97,7 +125,6 @@ export default {
         const action = existingRecordId ? 'updated' : 'created';
         let tgStatus = 'disabled';
         if (isTelegramEnabled(env)) {
-            // ✅ 通知中显示完整域名
             const displayName = (prefix === '@') ? zone_name : `${prefix}.${zone_name}`;
             const tgSuccess = await sendTelegramNotification(env, action, displayName, ip, node_name || DEFAULT_NODE_NAME);
             tgStatus = tgSuccess ? 'sent' : 'failed';
@@ -119,10 +146,12 @@ async function sendTelegramNotification(env, action, recordName, ip, nodeName) {
     try {
         const actionText = action === 'updated' ? '更新' : '创建';
         const displayIP = maskIPAddress(ip);
+        const displayDomain = maskDomain(recordName);
+        
         const message = `🚀 *DDNS 记录${actionText}*
 
 📍 *节点*: \`${nodeName}\`
-🌐 *域名*: \`${recordName}\`
+🌐 *域名*: \`${displayDomain}\`
 🔗 *IP*: \`${displayIP}\`
 ⏰ *时间*: \`${new Date().toISOString()}\``;
 
