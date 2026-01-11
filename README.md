@@ -44,7 +44,7 @@
 | Secret 名称 | 说明 |
 |-------------|------|
 | `TG_BOT_TOKEN` | Telegram Bot Token (通过 @BotFather 获取) |
-| `TG_CHANNEL_ID` | 接收通知的频道或群组 ID (通常以 -100 开头) |
+| `TG_CHAT_ID` | 接收通知的个人、频道或群组 ID (通常以 -100 开头) |
 | `DEFAULT_TTL` | DNS 记录的 TTL 值 (默认为 1，即自动) |
 
 #### 4. 部署
