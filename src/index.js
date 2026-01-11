@@ -15,7 +15,7 @@ function maskIPAddress(ip) {
 }
 
 function isTelegramEnabled(env) {
-    return !!(env.TG_BOT_TOKEN && env.TG_CHANNEL_ID);
+    return !!(env.TG_BOT_TOKEN && env.TG_CHAT_ID);
 }
 
 export default {
@@ -130,7 +130,7 @@ async function sendTelegramNotification(env, action, recordName, ip, nodeName) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                chat_id: env.TG_CHANNEL_ID,
+                chat_id: env.TG_CHAT_ID,
                 text: message,
                 parse_mode: 'Markdown'
             })
