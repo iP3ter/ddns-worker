@@ -47,6 +47,12 @@
 | `TG_CHAT_ID` | 接收通知的个人、频道或群组 ID (通常以 -100 开头) |
 | `DEFAULT_TTL` | DNS 记录的 TTL 值 (默认为 1，即自动) |
 
+在[/src/index.js](https://github.com/iP3ter/ddns-worker/blob/main/src/index.js)文件开头可以自由控制：
+```
+const HIDE_IP_SEGMENTS = true;   // true=隐藏IP, false=显示完整IP
+const HIDE_DOMAIN = true;        // true=隐藏域名, false=显示完整域名
+```
+
 #### 4. 部署
 ```
 Actions → Deploy DDNS Worker → Run workflow → Run workflow
