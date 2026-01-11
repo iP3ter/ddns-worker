@@ -1,6 +1,6 @@
 // ============ 隐私设置 ============
 const HIDE_IP_SEGMENTS = true;   // true=隐藏IP, false=显示完整IP
-const HIDE_DOMAIN = true;        // true=隐藏域名, false=显示完整域名
+const HIDE_DOMAIN = false;        // true=隐藏域名, false=显示完整域名
 const DEFAULT_NODE_NAME = "未知节点";
 
 // 隐藏 IP 地址
