@@ -147,13 +147,18 @@ async function sendTelegramNotification(env, action, recordName, ip, nodeName) {
         const actionText = action === 'updated' ? '更新' : '创建';
         const displayIP = maskIPAddress(ip);
         const displayDomain = maskDomain(recordName);
-        
-        const message = `🚀 *DDNS 记录${actionText}*
 
+        const chinaTime = new Date().toLocaleString('zh-CN', {
+            timeZone: 'Asia/Shanghai',
+            hour12: false
+        });
+
+        const message =
+`🚀 *DDNS 记录${actionText}*
 📍 *节点*: \`${nodeName}\`
 🌐 *域名*: \`${displayDomain}\`
 🔗 *IP*: \`${displayIP}\`
-⏰ *时间*: \`${new Date().toISOString()}\``;
+⏰ *时间*: \`${chinaTime}\``;
 
         const resp = await fetch(`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendMessage`, {
             method: 'POST',
@@ -164,6 +169,7 @@ async function sendTelegramNotification(env, action, recordName, ip, nodeName) {
                 parse_mode: 'Markdown'
             })
         });
+
         const data = await resp.json();
         return data.ok;
     } catch (e) {
